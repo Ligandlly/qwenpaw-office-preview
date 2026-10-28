@@ -1,0 +1,33 @@
+{
+  "id": "qwenpaw-office-preview",
+  "name": {
+    "zh-CN": "Office 文档预览",
+    "en-US": "Office Document Preview"
+  },
+  "version": "1.0.0",
+  "type": "general",
+  "description": "在 QwenPaw 中预览 Word、PowerPoint、Excel 等办公文档（doc/docx/ppt/pptx/xls/xlsx）。",
+  "description_i18n": {
+    "zh-CN": "在 QwenPaw 中预览 Word、PowerPoint、Excel 等办公文档（doc/docx/ppt/pptx/xls/xlsx）。",
+    "en-US": "Preview Word, PowerPoint and Excel documents (doc/docx/ppt/pptx/xls/xlsx) inside QwenPaw."
+  },
+  "author": "QwenPaw Community",
+  "entry": {
+    "backend": "plugin.py",
+    "frontend": "dist/index.js"
+  },
+  "dependencies": [
+    "mammoth>=1.8.0",
+    "python-docx>=1.1.2",
+    "python-pptx>=1.0.2",
+    "openpyxl>=3.1.2"
+  ],
+  "qwenpaw_version": {
+    "min": "2.0.0",
+    "max": "3.0.0"
+  },
+  "meta": {
+    "category": "productivity",
+    "icon": "📄"
+  }
+}

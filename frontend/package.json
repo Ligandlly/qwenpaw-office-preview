@@ -1,0 +1,27 @@
+{
+  "name": "qwenpaw-office-preview-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^5.6.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^19.3.0",
+    "antd": "^5.29.3",
+    "esbuild": "^0.25.0",
+    "jsdom": "^30.1.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.0",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5"
+  }
+}
