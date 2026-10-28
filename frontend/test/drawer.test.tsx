@@ -76,6 +76,31 @@ describe("office preview drawer", () => {
     });
   });
 
+  it("switches to dark mode and reconverts the document", async () => {
+    const api = await import("../src/api");
+    vi.mocked(api.convertBlob).mockClear();
+
+    openDrawer();
+    await waitFor(() => {
+      expect(document.querySelector(".qopx-drawer")).toBeTruthy();
+    });
+    expect(
+      document.querySelector(".qopx-drawer")?.getAttribute("data-theme"),
+    ).toBe("light");
+
+    document.documentElement.classList.add("dark-mode");
+    try {
+      await waitFor(() => {
+        expect(
+          document.querySelector(".qopx-drawer")?.getAttribute("data-theme"),
+        ).toBe("dark");
+        expect(api.convertBlob).toHaveBeenCalledTimes(2);
+      });
+    } finally {
+      document.documentElement.classList.remove("dark-mode");
+    }
+  });
+
   it("can be closed programmatically", async () => {
     openDrawer();
     await waitFor(() => {

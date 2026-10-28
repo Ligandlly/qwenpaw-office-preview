@@ -29,17 +29,3 @@ export function formatDateTime(iso: string | undefined): string {
     return date.toISOString();
   }
 }
-
-export function fileEmoji(name: string): string {
-  const ext = (name.split(".").pop() || "").toLowerCase();
-  if (["doc", "docx", "docm", "dot", "dotx", "dotm", "wps"].includes(ext)) {
-    return "📝";
-  }
-  if (["ppt", "pptx", "pptm", "pps", "ppsx", "potx", "dps"].includes(ext)) {
-    return "📊";
-  }
-  if (["xls", "xlsx", "xlsm", "xltx", "xltm", "et", "csv", "tsv"].includes(ext)) {
-    return "📈";
-  }
-  return "📄";
-}

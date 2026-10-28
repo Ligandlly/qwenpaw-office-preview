@@ -15,10 +15,12 @@
 - 聊天中点击办公文档会打开**右侧滑入侧栏**，与 QwenPaw 内置文件预览一致：不遮挡
   对话、可拖拽左边缘调整宽度、双击恢复默认宽度；其他文件类型仍交给内置预览。
 - 同时提供独立预览页面、拖拽上传和工作区文件浏览。
+- 跟随 Console 亮/暗主题：侧栏、页面和 iframe 内的文档会同步切换，切换主题时
+  自动重新渲染当前预览。
 
 <p align="center">
   <img src="docs/preview-docx.png" alt="Word 预览" width="32%">
-  <img src="docs/preview-pptx.png" alt="PowerPoint 预览" width="32%">
+  <img src="docs/preview-pptx.png" alt="PowerPoint 预览（深色模式）" width="32%">
   <img src="docs/preview-xlsx.png" alt="Excel 预览" width="32%">
 </p>
 
@@ -48,13 +50,13 @@
 安装时**不需要 pip、npm 或任何网络访问**：
 
 ```bash
-qwenpaw plugin install ./qwenpaw-office-preview-offline-1.1.0.zip
+qwenpaw plugin install ./qwenpaw-office-preview-offline-1.1.1.zip
 ```
 
 解压后也可以直接安装目录：
 
 ```bash
-unzip qwenpaw-office-preview-offline-1.1.0.zip
+unzip qwenpaw-office-preview-offline-1.1.1.zip
 qwenpaw plugin install ./qwenpaw-office-preview
 ```
 

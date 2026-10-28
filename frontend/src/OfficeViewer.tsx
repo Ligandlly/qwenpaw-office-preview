@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 import { React, antd, antdIcons } from "./host";
 import { t } from "./i18n";
-import { formatBytes, fileEmoji } from "./format";
+import { formatBytes } from "./format";
+import { FileTypeIcon } from "./icons";
 import type { PreviewState } from "./usePreview";
 
 const { Alert, Button, Space, Spin, Tag, Tooltip, Typography } = antd;
@@ -60,7 +61,9 @@ export function OfficeViewer({
   const header = (
     <div className="qopx-viewer-head">
       <div className="qopx-viewer-title">
-        <span aria-hidden="true">{fileEmoji(filename)}</span>
+        <span className="qopx-viewer-file-icon" aria-hidden="true">
+          <FileTypeIcon name={filename} />
+        </span>
         <span title={filename}>{filename || t("routeTitle")}</span>
         {status === "ready" && kind && <Tag color="blue">{kind}</Tag>}
         {convertedFrom && (

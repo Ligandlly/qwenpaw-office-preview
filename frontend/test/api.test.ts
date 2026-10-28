@@ -94,6 +94,29 @@ describe("convertBlob", () => {
     expect(url).toContain("theme=");
   });
 
+  it("passes the current host theme to the converter", async () => {
+    const fetchMock = host.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        ok: true,
+        filename: "a.docx",
+        kind: "docx",
+        format: "html",
+        html: "<html>ok</html>",
+        warnings: [],
+        meta: {},
+      }),
+    );
+    document.documentElement.classList.add("dark-mode");
+    try {
+      await convertBlob(new Blob(["abc"]), "a.docx");
+      const url = fetchMock.mock.calls[0][0] as string;
+      expect(url).toContain("theme=dark");
+    } finally {
+      document.documentElement.classList.remove("dark-mode");
+    }
+  });
+
   it("surfaces structured backend errors", async () => {
     const fetchMock = host.fetch as unknown as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValue(

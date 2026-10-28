@@ -53,6 +53,21 @@ html.qop-theme-dark {
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html {
+  background: var(--qop-bg);
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar { width: 0; height: 0; }
+* {
+  scrollbar-color: var(--qop-border) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--qop-border);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track { background: transparent; }
 body {
   min-height: 100vh;
   padding: 22px 16px 48px;

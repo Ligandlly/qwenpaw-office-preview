@@ -5,7 +5,7 @@ import type {
 } from "react";
 
 import type { PreviewRequest } from "./api";
-import { React, ReactDOM, antd, currentTheme } from "./host";
+import { React, ReactDOM, antd, useHostTheme } from "./host";
 import { t } from "./i18n";
 import { OfficeViewer } from "./OfficeViewer";
 import { installStyles } from "./styles";
@@ -99,6 +99,8 @@ interface DrawerHostProps {
 
 function DrawerHost({ request, onClose }: DrawerHostProps) {
   const { state, run } = usePreview();
+  const theme = useHostTheme();
+  const lastTheme = React.useRef(theme);
   const {
     width,
     onPointerDown,
@@ -118,6 +120,12 @@ function DrawerHost({ request, onClose }: DrawerHostProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  React.useEffect(() => {
+    if (lastTheme.current === theme) return;
+    lastTheme.current = theme;
+    void run(request);
+  }, [theme, request, run]);
+
   const requestClose = React.useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
@@ -136,7 +144,7 @@ function DrawerHost({ request, onClose }: DrawerHostProps) {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [requestClose]);
 
-  const dark = currentTheme() === "dark";
+  const dark = theme === "dark";
   const algorithm =
     dark && antd.theme?.darkAlgorithm
       ? antd.theme.darkAlgorithm
@@ -155,6 +163,7 @@ function DrawerHost({ request, onClose }: DrawerHostProps) {
         role="dialog"
         aria-modal="true"
         aria-label={t("dialogLabel")}
+        data-theme={theme}
         tabIndex={-1}
       >
         <div

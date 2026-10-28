@@ -67,6 +67,25 @@ export function currentTheme(): "light" | "dark" {
   return "light";
 }
 
+/** Track the Console theme class so previews can re-render on toggle. */
+export function useHostTheme(): "light" | "dark" {
+  const [theme, setTheme] = React.useState<"light" | "dark">(currentTheme);
+  React.useEffect(() => {
+    const update = () => setTheme(currentTheme());
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+    window.addEventListener("qwenpaw:auth-changed", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("qwenpaw:auth-changed", update);
+    };
+  }, []);
+  return theme;
+}
+
 export function readSelectedAgentId(): string {
   try {
     const raw =

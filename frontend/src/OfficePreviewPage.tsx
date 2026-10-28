@@ -17,8 +17,9 @@ import {
   type HealthResult,
   type PreviewRequest,
 } from "./api";
-import { React, antd, antdIcons, currentTheme } from "./host";
-import { formatBytes, formatDateTime, fileEmoji } from "./format";
+import { React, antd, antdIcons, useHostTheme } from "./host";
+import { formatBytes, formatDateTime } from "./format";
+import { FileTypeIcon, HeroIcon, UploadIcon, WorkspaceIcon } from "./icons";
 import { t } from "./i18n";
 import { OfficeViewer } from "./OfficeViewer";
 import { usePreview } from "./usePreview";
@@ -160,7 +161,7 @@ function DropZone({ onFile }: DropZoneProps) {
       }}
     >
       <span className="qopx-drop-icon" aria-hidden="true">
-        📄
+        <UploadIcon />
       </span>
       <span className="qopx-drop-title">{t("dropTitle")}</span>
       <span className="qopx-drop-hint">{t("dropHint")}</span>
@@ -339,7 +340,10 @@ function WorkspaceBrowser({ onPick }: WorkspaceBrowserProps) {
                 }}
               >
                 <span className="qopx-file-icon" aria-hidden="true">
-                  {entry.kind === "directory" ? "📁" : fileEmoji(entry.name)}
+                  <FileTypeIcon
+                    name={entry.name}
+                    directory={entry.kind === "directory"}
+                  />
                 </span>
                 <span className="qopx-file-main">
                   <span className="qopx-file-name" title={entry.name}>
@@ -370,11 +374,13 @@ function WorkspaceBrowser({ onPick }: WorkspaceBrowserProps) {
 
 export function OfficePreviewPage() {
   const { state, run, reset } = usePreview();
+  const theme = useHostTheme();
   const [lastRequest, setLastRequest] = React.useState<PreviewRequest | null>(
     null,
   );
   const viewerRef = React.useRef<HTMLElement | null>(null);
   const initialised = React.useRef(false);
+  const lastTheme = React.useRef(theme);
 
   const start = React.useCallback(
     (request: PreviewRequest) => {
@@ -386,6 +392,12 @@ export function OfficePreviewPage() {
     },
     [run],
   );
+
+  React.useEffect(() => {
+    if (lastTheme.current === theme) return;
+    lastTheme.current = theme;
+    if (lastRequest) void run(lastRequest);
+  }, [theme, lastRequest, run]);
 
   React.useEffect(() => {
     if (initialised.current) return;
@@ -426,11 +438,11 @@ export function OfficePreviewPage() {
   }
 
   return (
-    <div className="qopx-page" data-theme={currentTheme()}>
+    <div className="qopx-page" data-theme={theme}>
       <header className="qopx-hero">
         <h1>
           <span className="qopx-hero-icon" aria-hidden="true">
-            📄
+            <HeroIcon />
           </span>
           {t("routeTitle")}
         </h1>
@@ -456,7 +468,10 @@ export function OfficePreviewPage() {
 
         <section className="qopx-card">
           <div className="qopx-card-head">
-            <div className="qopx-card-title">🗂 {t("workspace")}</div>
+            <div className="qopx-card-title">
+              <WorkspaceIcon />
+              {t("workspace")}
+            </div>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               {t("cacheNote")}
             </Typography.Text>
