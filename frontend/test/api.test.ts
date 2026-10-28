@@ -33,9 +33,9 @@ describe("resolveSource", () => {
 
   it("fetches workspace files through the authenticated host API", async () => {
     const fetchMock = host.fetch as unknown as ReturnType<typeof vi.fn>;
-    fetchMock.mockResolvedValue(
-      new Response(new Blob(["data"]), { status: 200 }),
-    );
+    // A string body works across Node/undici versions; constructing a
+    // Response from a jsdom Blob fails on older Node runtimes.
+    fetchMock.mockResolvedValue(new Response("data", { status: 200 }));
 
     const resolved = await resolveSource({
       filename: "report.docx",
