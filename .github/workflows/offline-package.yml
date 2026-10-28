@@ -152,12 +152,14 @@ jobs:
 
           SHA256 校验：${zip_name}.sha256
           NOTES
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" release/*.zip release/*.sha256 --clobber
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" release/*.zip release/*.sha256 \
+              -R "$GITHUB_REPOSITORY" --clobber
           else
             gh release create "$tag" release/*.zip release/*.sha256 \
+              -R "$GITHUB_REPOSITORY" \
               --title "QwenPaw Office Preview ${tag}" \
               --notes-file /tmp/release-notes.md
           fi
-          gh release view "$tag" --json url,assets \
+          gh release view "$tag" -R "$GITHUB_REPOSITORY" --json url,assets \
             --jq '.url, (.assets[] | .name + "  " + (.size|tostring) + " bytes")'
