@@ -1,0 +1,8 @@
+# Pure-Python dependency set for the offline bundle.
+#
+# python-docx / python-pptx are intentionally excluded: they require compiled
+# lxml wheels and would make the bundle platform/ABI specific. DOCX rendering
+# uses mammoth, and PPTX falls back to converter/pptx_native.py when
+# python-pptx is unavailable.
+mammoth==1.13.0
+openpyxl==3.1.5

@@ -36,6 +36,8 @@ def image_data_uri(
     """
 
     content_type = (content_type or "image/png").split(";")[0].strip().lower()
+    width: int | None = None
+    height: int | None = None
     if _looks_like_vector(blob):
         return "", None, None
     try:

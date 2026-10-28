@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+from pathlib import Path
 
 import pytest
 from docx import Document
@@ -252,3 +253,57 @@ def test_xlsx_date_values_are_text():
     html = convert_office("dates.xlsx", stream.getvalue())["html"]
     assert "2026-03-01" in html
     assert "2026-03-02" in html
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_committed_fixtures_cover_all_modern_formats():
+    cases = {
+        "sample.docx": ["Offline Sample Report", "offline smoke tests", "<table"],
+        "sample.xlsx": ["Data", "Notes", "35.0%", "¥12,345.67", "Merged Title"],
+        "sample.pptx": [
+            "Offline Sample Deck",
+            "First part",
+            "Table Slide",
+            "Speaker note for offline test",
+            "data:image/",
+        ],
+        "sample.csv": ["Alice", "90"],
+    }
+    for name, markers in cases.items():
+        result = convert_office(name, (FIXTURES / name).read_bytes())
+        for marker in markers:
+            assert marker in result["html"], (name, marker)
+
+
+def test_native_pptx_renderer_reads_layout_inheritance():
+    from converter.pptx_native import render_pptx_native
+
+    html, warnings = render_pptx_native(
+        (FIXTURES / "sample.pptx").read_bytes(),
+        filename="sample.pptx",
+        theme="light",
+    )
+    assert warnings == []
+    # Placeholder positions come from slideLayout/slideMaster, not the slide.
+    assert "Offline Sample Deck" in html
+    assert "First part" in html
+    assert "qop-shape" in html
+    assert "Speaker note for offline test" in html
+    assert "data:image/" in html
+
+
+def test_render_pptx_falls_back_to_native(monkeypatch):
+    import converter.pptx as pptx_module
+
+    def boom(*_args, **_kwargs):
+        raise ImportError("python-pptx is not installed")
+
+    monkeypatch.setattr(pptx_module, "_render_with_python_pptx", boom)
+    html, warnings = pptx_module.render_pptx(
+        (FIXTURES / "sample.pptx").read_bytes(),
+        filename="sample.pptx",
+    )
+    assert "Offline Sample Deck" in html
+    assert any("python-pptx" in item for item in warnings)

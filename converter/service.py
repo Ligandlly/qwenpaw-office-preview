@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import logging
 import os
+import sys
 import threading
 import zipfile
 from collections import OrderedDict
@@ -102,9 +102,20 @@ def max_bytes() -> int:
 
 
 def _module_available(name: str) -> bool:
+    """Return True when a renderer dependency can be imported.
+
+    A plain ``find_spec`` probe is not enough: QwenPaw resolves bare imports
+    inside a plugin through the plugin's own ``__import__`` hook, so vendored
+    packages at the plugin root are importable while ``find_spec`` cannot see
+    them.  Importing once is also what the converter will do anyway.
+    """
+
+    if name in sys.modules:
+        return sys.modules[name] is not None
     try:
-        return importlib.util.find_spec(name) is not None
-    except (ImportError, ValueError):
+        __import__(name)
+        return True
+    except Exception:
         return False
 
 
@@ -115,11 +126,15 @@ def health() -> dict[str, Any]:
         "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
         "renderers": {
             "docx": _module_available("mammoth") or _module_available("docx"),
-            "pptx": _module_available("pptx"),
+            # The pure-Python native renderer is always available.
+            "pptx": True,
             "xlsx": _module_available("openpyxl"),
             "csv": True,
             "legacy_doc_ppt_xls": bool(soffice),
         },
+        "pptx_engine": (
+            "python-pptx" if _module_available("pptx") else "native"
+        ),
         "libreoffice": soffice,
         "max_mb": max_bytes() // (1024 * 1024),
         "notes": (
@@ -127,11 +142,6 @@ def health() -> dict[str, Any]:
                 "未安装 mammoth/python-docx，无法预览 Word 文档。",
             ]
             if not (_module_available("mammoth") or _module_available("docx"))
-            else []
-        )
-        + (
-            ["未安装 python-pptx，无法预览 PPT。"]
-            if not _module_available("pptx")
             else []
         )
         + (
@@ -292,8 +302,8 @@ _cache = _ResultCache()
 
 _REQUIRED_MODULES = {
     "docx": ("mammoth", "docx"),
-    "pptx": ("pptx",),
     "xlsx": ("openpyxl",),
+    # PPTX always works: converter/pptx_native.py only needs the stdlib.
 }
 
 

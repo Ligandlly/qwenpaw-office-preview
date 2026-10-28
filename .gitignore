@@ -15,3 +15,6 @@ frontend/coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# Offline packaging output
+dist-offline/

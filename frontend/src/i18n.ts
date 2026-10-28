@@ -44,6 +44,7 @@ const ZH = {
   convertedFrom: "已从旧格式转换",
   warnings: "格式提示",
   timeout: "预览已取消或超时。",
+  resizeHint: "拖动调整宽度，双击恢复默认",
 };
 
 const EN: Record<keyof typeof ZH, string> = {
@@ -94,6 +95,7 @@ const EN: Record<keyof typeof ZH, string> = {
   convertedFrom: "Converted from a legacy format",
   warnings: "Document notes",
   timeout: "Preview was cancelled or timed out.",
+  resizeHint: "Drag to resize, double-click to reset",
 };
 
 export type MessageKey = keyof typeof ZH;

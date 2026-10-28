@@ -169,9 +169,16 @@ body.qop-pptx {
   background: var(--qop-bg);
   padding-bottom: 40px;
 }
-.qop-slides { max-width: 1000px; margin: 0 auto; }
+.qop-slides {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  container-type: inline-size;
+}
 .qop-slide {
   position: relative;
+  width: 100%;
+  height: auto;
   margin: 0 auto 26px;
   background: var(--qop-paper);
   border: 1px solid var(--qop-border);
@@ -179,7 +186,7 @@ body.qop-pptx {
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
   overflow: hidden;
 }
-.qop-slide-inner { position: relative; width: 960px; height: 540px; transform-origin: top left; }
+.qop-slide-inner { position: absolute; inset: 0; }
 .qop-shape { position: absolute; overflow: visible; }
 .qop-shape-text { white-space: pre-wrap; word-break: break-word; }
 .qop-shape-text p { margin: 0; }
@@ -189,7 +196,7 @@ body.qop-pptx {
   position: absolute;
   right: 10px;
   bottom: 6px;
-  font-size: 11px;
+  font-size: clamp(9px, 1.15cqw, 12px);
   color: var(--qop-fg-muted);
   z-index: 2;
 }

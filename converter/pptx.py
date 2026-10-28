@@ -25,6 +25,18 @@ _DEFAULT_FONT_PT = 18.0
 _MAX_TEXT_CHARS = 20_000
 
 
+def _cqw(px: float) -> str:
+    """Convert a pixel size from the 960px design space into container units."""
+
+    return f"{px / TARGET_SLIDE_WIDTH_PX * 100:.3f}cqw"
+
+
+def _percent(px: float, total: float) -> str:
+    if not total:
+        return "0%"
+    return f"{px / total * 100:.3f}%"
+
+
 class PptxRenderError(RuntimeError):
     """Raised when the PPTX package cannot be parsed."""
 
@@ -78,7 +90,7 @@ def _run_html(run: Any, scale: float, default_pt: float = _DEFAULT_FONT_PT) -> s
         except Exception:
             pass
     size_px = max(7.0, min(120.0, size_pt * 12700 * scale))
-    style.append(f"font-size:{size_px:.1f}px")
+    style.append(f"font-size:{_cqw(size_px)}")
     if font is not None:
         try:
             if font.bold:
@@ -170,7 +182,7 @@ def _text_frame_html(
             level = 0
         bullet = "• " if level > 0 else ""
         if level > 0:
-            style.append(f"padding-left:{level * 18:.0f}px")
+            style.append(f"padding-left:{_cqw(level * 18)}")
         try:
             align = int(paragraph.alignment) if paragraph.alignment is not None else None
         except Exception:
@@ -193,13 +205,13 @@ def _text_frame_html(
     padding = ""
     try:
         padding = (
-            f"padding:{_emu(text_frame.margin_top) * scale:.0f}px "
-            f"{_emu(text_frame.margin_right) * scale:.0f}px "
-            f"{_emu(text_frame.margin_bottom) * scale:.0f}px "
-            f"{_emu(text_frame.margin_left) * scale:.0f}px"
+            f"padding:{_cqw(_emu(text_frame.margin_top) * scale)} "
+            f"{_cqw(_emu(text_frame.margin_right) * scale)} "
+            f"{_cqw(_emu(text_frame.margin_bottom) * scale)} "
+            f"{_cqw(_emu(text_frame.margin_left) * scale)}"
         )
     except Exception:
-        padding = "padding:2px 4px"
+        padding = f"padding:{_cqw(2)} {_cqw(4)}"
     return (
         f'<div class="qop-shape-text" style="height:100%;display:flex;'
         f"flex-direction:column;justify-content:{anchor};{padding}\">"
@@ -235,7 +247,7 @@ def _table_html(table: Any, scale: float) -> str:
         return ""
     return (
         f'<div style="height:100%;overflow:hidden">'
-        f'<table style="font-size:{font_px:.1f}px">'
+        f'<table style="font-size:{_cqw(font_px)}">'
         f"<tbody>{''.join(rows)}</tbody></table></div>"
     )
 
@@ -284,6 +296,7 @@ _IDENTITY_TRANSFORM = (0.0, 0.0, 1.0, 1.0, 0.0, 0.0)
 def _group_children_html(
     shape: Any,
     scale: float,
+    stage_height: float,
     transform: tuple[float, float, float, float, float, float],
 ) -> str:
     """Render grouped shapes, applying the group's coordinate transform."""
@@ -329,7 +342,7 @@ def _group_children_html(
     )
     items: list[str] = []
     for child in children:
-        item = _shape_html(child, scale, child_transform)
+        item = _shape_html(child, scale, stage_height, child_transform)
         if item:
             items.append(item)
     return "".join(items)
@@ -338,6 +351,7 @@ def _group_children_html(
 def _shape_html(
     shape: Any,
     scale: float,
+    stage_height: float,
     transform: tuple[float, float, float, float, float, float] = _IDENTITY_TRANSFORM,
 ) -> str:
     try:
@@ -349,13 +363,15 @@ def _shape_html(
     if width <= 0 or height <= 0:
         return ""
     style = (
-        f"left:{left * scale:.1f}px;top:{top * scale:.1f}px;"
-        f"width:{width * scale:.1f}px;height:{height * scale:.1f}px;"
+        f"left:{_percent(left * scale, TARGET_SLIDE_WIDTH_PX)};"
+        f"top:{_percent(top * scale, stage_height)};"
+        f"width:{_percent(width * scale, TARGET_SLIDE_WIDTH_PX)};"
+        f"height:{_percent(height * scale, stage_height)};"
     )
 
     # Group
     if "GROUP" in shape_type.upper():
-        return _group_children_html(shape, scale, transform)
+        return _group_children_html(shape, scale, stage_height, transform)
 
     # Picture
     try:
@@ -429,7 +445,7 @@ def _slide_title(slide: Any) -> str:
     return ""
 
 
-def render_pptx(
+def _render_with_python_pptx(
     data: bytes,
     *,
     filename: str,
@@ -467,7 +483,7 @@ def render_pptx(
         shapes: list[str] = []
         for shape in slide.shapes:
             try:
-                markup = _shape_html(shape, scale)
+                markup = _shape_html(shape, scale, stage_height)
             except Exception as exc:  # one broken shape must not kill a deck
                 logger.debug("PPTX shape failed: %s", exc)
                 markup = ""
@@ -483,9 +499,9 @@ def render_pptx(
                     unsupported += 1
         slides_html.append(
             f'<section class="qop-slide" id="slide-{index}" '
-            f'style="width:{TARGET_SLIDE_WIDTH_PX}px;height:{stage_height}px;">'
-            f'<div class="qop-slide-inner" style="width:{TARGET_SLIDE_WIDTH_PX}px;'
-            f'height:{stage_height}px;{bg_style}">{"".join(shapes)}</div>'
+            f'style="aspect-ratio:{slide_width}/{slide_height};">'
+            f'<div class="qop-slide-inner" style="{bg_style}">'
+            f'{"".join(shapes)}</div>'
             f'<span class="qop-slide-no">{index}</span>'
             "</section>",
         )
@@ -526,3 +542,71 @@ def render_pptx(
         theme=theme,
     )
     return doc, warnings
+
+
+def render_pptx(
+    data: bytes,
+    *,
+    filename: str,
+    theme: str = "auto",
+) -> tuple[str, list[str]]:
+    """Render a PPTX, falling back to the pure-Python reader.
+
+    ``python-pptx`` provides the best fidelity (charts, inherited styles), but
+    it pulls in compiled ``lxml``.  Offline bundles only ship pure-Python
+    packages, so the native reader keeps PPT previews working there.
+    """
+
+    try:
+        return _render_with_python_pptx(data, filename=filename, theme=theme)
+    except ImportError as exc:
+        logger.info("python-pptx unavailable, using native renderer: %s", exc)
+        return _native_render(
+            data,
+            filename=filename,
+            theme=theme,
+            warning=(
+                "未安装 python-pptx，已使用内置解析器渲染；"
+                "复杂图表和继承样式可能简化显示。"
+            ),
+        )
+    except PptxRenderError:
+        # A package that python-pptx rejects can still be readable by the
+        # native parser (e.g. unusual macro-enabled containers).
+        try:
+            return _native_render(
+                data,
+                filename=filename,
+                theme=theme,
+                warning="python-pptx 解析失败，已使用内置解析器渲染。",
+            )
+        except Exception:
+            raise
+    except Exception as exc:
+        logger.info("python-pptx render failed, trying native parser: %s", exc)
+        try:
+            return _native_render(
+                data,
+                filename=filename,
+                theme=theme,
+                warning="高级 PPT 渲染失败，已使用内置解析器渲染。",
+            )
+        except Exception:
+            raise PptxRenderError(f"无法解析 PPTX 文件：{exc}") from exc
+
+
+def _native_render(
+    data: bytes,
+    *,
+    filename: str,
+    theme: str,
+    warning: str,
+) -> tuple[str, list[str]]:
+    from .pptx_native import render_pptx_native
+
+    return render_pptx_native(
+        data,
+        filename=filename,
+        theme=theme,
+        extra_warnings=[warning],
+    )

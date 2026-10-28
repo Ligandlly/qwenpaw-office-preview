@@ -1,5 +1,8 @@
 # QwenPaw Office 文档预览插件
 
+[![Build, Test & Package](https://github.com/Ligandlly/qwenpaw-office-preview/actions/workflows/offline-package.yml/badge.svg)](https://github.com/Ligandlly/qwenpaw-office-preview/actions/workflows/offline-package.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 给 [QwenPaw](https://github.com/modelscope/QwenPaw) 增加 Word / PowerPoint / Excel
 文档预览能力。QwenPaw 原生只能预览纯文本、图片、PDF 和 CSV；安装本插件后，聊天里
 生成的 `.docx` / `.pptx` / `.xlsx` 附件、工作区里的办公文档以及本地拖入的文件都可
@@ -9,7 +12,9 @@
   `<iframe sandbox="">` 展示，不加载任何外部资源，也不执行文档里的脚本。
 - 支持现代 OOXML 格式（原生解析）和旧版二进制格式（检测到本机 LibreOffice 时自动
   转换后解析）。
-- 同时提供独立预览页面、拖拽上传、工作区文件浏览，以及聊天文件点击拦截。
+- 聊天中点击办公文档会打开**右侧滑入侧栏**，与 QwenPaw 内置文件预览一致：不遮挡
+  对话、可拖拽左边缘调整宽度、双击恢复默认宽度；其他文件类型仍交给内置预览。
+- 同时提供独立预览页面、拖拽上传和工作区文件浏览。
 
 <p align="center">
   <img src="docs/preview-docx.png" alt="Word 预览" width="32%">
@@ -23,7 +28,7 @@
 | --- | --- | --- |
 | `.docx` `.docm` `.dotx` | `mammoth` + `python-docx` 兜底 | 标题、列表、表格、内联图片、超链接 |
 | `.doc` `.dot` `.wps` | LibreOffice → `.docx` | 需要本机安装 LibreOffice |
-| `.pptx` `.pptm` `.ppsx` `.potx` | `python-pptx` | 按幻灯片真实比例绝对定位；文本、表格、图片、图表数据表、演讲者备注 |
+| `.pptx` `.pptm` `.ppsx` `.potx` | `python-pptx`，缺失时用内置纯 Python 解析器 | 按幻灯片真实比例自适应侧栏宽度；文本、表格、图片、图表数据表、演讲者备注 |
 | `.ppt` `.pps` `.dps` | LibreOffice → `.pptx` | 需要本机安装 LibreOffice |
 | `.xlsx` `.xlsm` `.xltx` `.xltm` | `openpyxl` | 多工作表、合并单元格、常见数字/日期/百分比/货币格式、基础字体与底色 |
 | `.xls` `.et` | LibreOffice → `.xlsx` | 需要本机安装 LibreOffice |
@@ -32,7 +37,41 @@
 文件扩展名与实际内容不一致时会按**文件头签名**判断（例如后缀是 `.doc`、内容其实是
 `.docx` 的文件不会被误送去 LibreOffice）。
 
-## 安装
+## 离线安装（内网 / 无外网）
+
+推荐使用 GitHub Actions 打出的离线包：
+
+- 推送 `v*` tag 时自动发布到 [Releases](https://github.com/Ligandlly/qwenpaw-office-preview/releases)；
+- 手动运行 **Build, Test & Package** 工作流，从 Actions 的 `offline-bundle` 产物下载。
+
+包内已包含构建好的前端 bundle 和纯 Python 依赖（`mammoth` / `openpyxl` 及其依赖），
+安装时**不需要 pip、npm 或任何网络访问**：
+
+```bash
+qwenpaw plugin install ./qwenpaw-office-preview-offline-1.1.0.zip
+```
+
+解压后也可以直接安装目录：
+
+```bash
+unzip qwenpaw-office-preview-offline-1.1.0.zip
+qwenpaw plugin install ./qwenpaw-office-preview
+```
+
+离线包使用内置纯 Python PPT 解析器，因此不携带 `python-pptx` / `lxml`；详细说明见
+下载包内的 `OFFLINE-INSTALL.md`。自己打包：
+
+```bash
+cd frontend
+npm ci --legacy-peer-deps
+npm run build
+cd ..
+
+python3 scripts/package_offline.py --out-dir dist-offline
+python3 scripts/smoke_offline.py dist-offline/.staging/qwenpaw-office-preview
+```
+
+## 联网安装（源码目录）
 
 ```bash
 # 方式一：从本地目录安装（会检查并在需要时安装 Python 依赖）
@@ -43,17 +82,18 @@ cp -r qwenpaw-preview-plugin ~/.qwenpaw/plugins/
 qwenpaw restart
 ```
 
-插件在 `plugin.json` 里声明了以下 Python 依赖，QwenPaw 在显式安装/更新/修复插件时
-会安装缺失项：
+联网版在 `requirements.txt` 中声明以下依赖，QwenPaw 在显式安装/更新/修复插件时会
+安装缺失项：
 
 ```
 mammoth>=1.8.0
-python-docx>=1.1.2
-python-pptx>=1.0.2
+python-docx>=1.1.2   # Word 兜底渲染（可选）
+python-pptx>=1.0.2   # 更高保真的 PPT 渲染（可选）
 openpyxl>=3.1.2
 ```
 
-如果宿主环境无法联网，请手动在 QwenPaw 的运行环境里安装：
+`python-pptx` / `python-docx` 缺失时插件仍可工作：PPT 自动切换到内置解析器，
+DOCX 使用 `mammoth`。手动安装完整依赖：
 
 ```bash
 pip install -r requirements.txt
@@ -88,10 +128,16 @@ brew install --cask libreoffice
 ### 1. 聊天中的文件
 
 在对话里点击由 `read_file` / `write_file` / 发送文件等工具产生的办公文档链接时，
-插件会拦截 `qwenpaw:open-file-preview` 事件并弹出自绘预览层。其他文件类型会原样
-交还给 QwenPaw 原生预览，互不影响。
+插件拦截 `qwenpaw:open-file-preview` 事件，并从右侧滑入与内置预览同款的侧栏：
+
+- 左边缘可拖拽调整宽度（宽度会记住，双击复位）；
+- `Esc`、关闭按钮或点击侧栏外部即可关闭；
+- 文本 / 图片 / PDF / CSV 等宿主已支持的类型仍由内置预览处理。
 
 ### 2. 独立预览页
+
+页面内点击工作区文档会直接展开预览；聊天场景使用右侧侧栏，二者共用同一个
+`OfficeViewer` 组件。
 
 - **拖拽 / 选择本地文件**：文件字节经认证接口上传给插件后端转换，不落盘。
 - **工作区文件**：在“项目目录 / 工作区目录”之间切换，浏览目录并点击办公文档。
@@ -165,7 +211,8 @@ curl -s -X POST \
 ## 已知限制
 
 - PPT 是“高保真近似”：文本框自动缩放、SmartArt、动画、音视频、OLE 对象不会渲染；
-  图表以数据表形式展示。分组形状会按组合坐标变换渲染。
+  图表以数据表形式展示。分组形状会按组合坐标变换渲染。联网安装时优先使用
+  `python-pptx`；离线包使用内置解析器，复杂继承样式可能进一步简化。
 - Word 的浮动图片、文本框、脚注、批注、复杂域代码不保证完整呈现；以 `mammoth` 的
   语义化结果为准。
 - Excel 仅展示缓存值（公式无缓存值时显示公式本身），不计算公式、不渲染图表和条件
@@ -177,7 +224,7 @@ curl -s -X POST \
 
 ## 开发
 
-后端（Python ≥ 3.10）：
+后端（Python ≥ 3.10，后端测试当前 27 个用例）：
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -186,14 +233,21 @@ python -m pytest -q
 ruff check .
 ```
 
-前端（Node ≥ 18）：
+前端（Node ≥ 18，17 个 Vitest 用例）：
 
 ```bash
 cd frontend
-npm install
+npm ci --legacy-peer-deps
 npm run typecheck   # tsc
 npm run test        # vitest + jsdom
 npm run build       # 产出 ../dist/index.js（无外部 import，React/antd 由宿主注入）
+```
+
+离线包：
+
+```bash
+python3 scripts/package_offline.py --out-dir dist-offline
+python3 scripts/smoke_offline.py dist-offline/.staging/qwenpaw-office-preview
 ```
 
 整体校验：
@@ -206,13 +260,18 @@ qwenpaw plugin validate .
 
 ```
 qwenpaw-preview-plugin/
+├── .github/workflows/     # CI：测试 + 前端构建 + 离线包 + Release
 ├── plugin.json            # 插件清单（backend + frontend 入口、依赖、版本约束）
 ├── plugin.py              # 注册 /api/office-preview 路由
-├── converter/             # 后端转换器（docx/pptx/xlsx/csv/legacy + 清洗 + 缓存）
+├── converter/             # 转换器（docx/pptx/xlsx/csv/legacy、纯 Python PPT、清洗、缓存）
 ├── dist/index.js          # 已构建的前端 bundle
 ├── frontend/              # 前端源码（esbuild + TypeScript + Vitest）
-├── requirements.txt
-└── tests/                 # 后端 pytest 用例
+├── packaging/             # 离线安装说明模板
+├── scripts/               # 离线打包与冒烟测试
+├── requirements.txt       # 联网安装依赖
+├── requirements-offline.txt  # 离线包纯 Python 依赖
+├── tests/                 # 后端 pytest + 固定样例文档
+└── docs/                  # 截图
 ```
 
 ## 卸载
@@ -230,7 +289,11 @@ A QwenPaw plugin that previews Word, PowerPoint and Excel documents
 (`doc/docx/ppt/pptx/xls/xlsx`, plus csv/tsv). The backend converts documents to
 self-contained HTML (inline CSS and data-URI images) and the frontend renders it
 in a sandboxed iframe. Legacy binary formats are converted through LibreOffice
-when available. Chat file links are intercepted, and a dedicated preview page
-supports drag & drop plus workspace browsing. Install with
-`qwenpaw plugin install <this-directory>`; see the sections above for
-configuration, API and limitations.
+when available. Chat file links open a right-side drawer that mirrors the
+built-in file preview (resizable width, click-outside/Esc to close), and a
+dedicated preview page supports drag & drop plus workspace browsing.
+
+For offline machines, download the `qwenpaw-office-preview-offline-*.zip`
+artifact/release and run `qwenpaw plugin install <zip>`; it vendors the
+pure-Python dependencies and needs no network. See the sections above for
+configuration, API, development and limitations.

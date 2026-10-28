@@ -1,0 +1,163 @@
+name: Build, Test & Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: office-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install test dependencies
+        run: |
+          uv venv .venv
+          uv pip install --python .venv/bin/python \
+            -r requirements.txt pytest fastapi httpx python-multipart
+      - name: Run pytest
+        run: .venv/bin/python -m pytest -q
+
+  frontend:
+    name: Frontend typecheck, tests & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run vitest
+        run: npm run test
+      - name: Build bundle
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/index.js
+          if-no-files-found: error
+          retention-days: 7
+
+  package:
+    name: Build offline bundle
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Verify tag matches plugin.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          manifest_version="$(python -c 'import json; print(json.load(open("plugin.json"))["version"])')"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ "$manifest_version" != "$tag_version" ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match plugin.json version ${manifest_version}"
+            exit 1
+          fi
+      - name: Package offline plugin
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            python scripts/package_offline.py \
+              --out-dir release --version "${GITHUB_REF_NAME#v}"
+          else
+            python scripts/package_offline.py --out-dir release
+          fi
+      - name: Smoke-test the staging tree
+        run: python scripts/smoke_offline.py release/.staging/qwenpaw-office-preview
+      - name: Smoke-test the actual zip
+        run: |
+          rm -rf /tmp/offline-zip && mkdir -p /tmp/offline-zip
+          unzip -q release/*.zip -d /tmp/offline-zip
+          test -f /tmp/offline-zip/qwenpaw-office-preview/plugin.json
+          python scripts/smoke_offline.py /tmp/offline-zip/qwenpaw-office-preview
+      - name: Clean staging and show bundle
+        run: |
+          rm -rf release/.staging
+          ls -lh release
+          cat release/*.sha256
+          echo "### Offline bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh release >> "$GITHUB_STEP_SUMMARY"
+          cat release/*.sha256 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-bundle
+          path: |
+            release/*.zip
+            release/*.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: package
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: offline-bundle
+          path: release
+      - name: Create or update release
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          zip_name="$(basename release/*.zip)"
+          cat > /tmp/release-notes.md <<NOTES
+          QwenPaw Office 文档预览插件 ${tag}
+
+          离线安装包已内置前端 bundle 与纯 Python 依赖，安装时无需访问 PyPI/npm：
+
+              qwenpaw plugin install ./${zip_name}
+
+          旧版 doc/ppt/xls 仍需要本机安装 LibreOffice；docx/pptx/xlsx 开箱即用。
+
+          SHA256 校验：${zip_name}.sha256
+          NOTES
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release/*.zip release/*.sha256 --clobber
+          else
+            gh release create "$tag" release/*.zip release/*.sha256 \
+              --title "QwenPaw Office Preview ${tag}" \
+              --notes-file /tmp/release-notes.md
+          fi
+          gh release view "$tag" --json url,assets \
+            --jq '.url, (.assets[] | .name + "  " + (.size|tostring) + " bytes")'

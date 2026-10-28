@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/overlay", () => ({
-  showOfficePreviewOverlay: vi.fn(),
-  closeOfficePreviewOverlay: vi.fn(),
+vi.mock("../src/drawer", () => ({
+  showOfficePreviewDrawer: vi.fn(),
+  closeOfficePreviewDrawer: vi.fn(),
 }));
 
 const { installPreviewInterceptor } = await import("../src/intercept");
-const { showOfficePreviewOverlay } = await import("../src/overlay");
+const { showOfficePreviewDrawer } = await import("../src/drawer");
 
 function dispatch(detail: unknown): CustomEvent {
   const event = new CustomEvent("qwenpaw:open-file-preview", {
@@ -20,7 +20,7 @@ function dispatch(detail: unknown): CustomEvent {
 describe("chat file preview interception", () => {
   beforeEach(() => {
     installPreviewInterceptor();
-    vi.mocked(showOfficePreviewOverlay).mockClear();
+    vi.mocked(showOfficePreviewDrawer).mockClear();
   });
 
   it("intercepts office workspace targets", () => {
@@ -33,7 +33,7 @@ describe("chat file preview interception", () => {
     });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(showOfficePreviewOverlay).toHaveBeenCalledWith({
+    expect(showOfficePreviewDrawer).toHaveBeenCalledWith({
       filename: "季度报告.docx",
       source: {
         kind: "workspace",
@@ -52,7 +52,7 @@ describe("chat file preview interception", () => {
       },
     });
 
-    expect(showOfficePreviewOverlay).toHaveBeenCalledWith({
+    expect(showOfficePreviewDrawer).toHaveBeenCalledWith({
       filename: "report.pptx",
       source: {
         kind: "artifact",
@@ -81,7 +81,7 @@ describe("chat file preview interception", () => {
       target: { source: "attachment", path: "docs/report.xlsx" },
     });
 
-    expect(showOfficePreviewOverlay).toHaveBeenCalledWith({
+    expect(showOfficePreviewDrawer).toHaveBeenCalledWith({
       filename: "report.xlsx",
       source: { kind: "workspace", path: "docs/report.xlsx", root: "project" },
     });
@@ -93,12 +93,12 @@ describe("chat file preview interception", () => {
     });
 
     expect(event.defaultPrevented).toBe(false);
-    expect(showOfficePreviewOverlay).not.toHaveBeenCalled();
+    expect(showOfficePreviewDrawer).not.toHaveBeenCalled();
   });
 
   it("ignores events without a target", () => {
     const event = dispatch({});
     expect(event.defaultPrevented).toBe(false);
-    expect(showOfficePreviewOverlay).not.toHaveBeenCalled();
+    expect(showOfficePreviewDrawer).not.toHaveBeenCalled();
   });
 });

@@ -16,3 +16,7 @@ lint:
 
 validate:
 	qwenpaw plugin validate .
+
+offline:
+	python3 scripts/package_offline.py --out-dir dist-offline
+	python3 scripts/smoke_offline.py dist-offline/.staging/qwenpaw-office-preview

@@ -1,6 +1,6 @@
 import { baseName, isOfficeFile, type PreviewRequest } from "./api";
 import { host } from "./host";
-import { showOfficePreviewOverlay } from "./overlay";
+import { showOfficePreviewDrawer } from "./drawer";
 
 const EVENT_NAME = "qwenpaw:open-file-preview";
 
@@ -81,7 +81,7 @@ function handlePreviewEvent(event: Event): void {
   // built-in "preview unavailable" drawer does not fight with our modal.
   event.preventDefault();
   event.stopImmediatePropagation();
-  showOfficePreviewOverlay(request);
+  showOfficePreviewDrawer(request);
 }
 
 let installed = false;
