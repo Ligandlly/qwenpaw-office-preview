@@ -50,13 +50,13 @@
 安装时**不需要 pip、npm 或任何网络访问**：
 
 ```bash
-qwenpaw plugin install ./qwenpaw-office-preview-offline-1.1.1.zip
+qwenpaw plugin install ./qwenpaw-office-preview-offline-1.1.2.zip
 ```
 
 解压后也可以直接安装目录：
 
 ```bash
-unzip qwenpaw-office-preview-offline-1.1.1.zip
+unzip qwenpaw-office-preview-offline-1.1.2.zip
 qwenpaw plugin install ./qwenpaw-office-preview
 ```
 

@@ -4,7 +4,7 @@
     "zh-CN": "Office 文档预览",
     "en-US": "Office Document Preview"
   },
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "general",
   "description": "在 QwenPaw 中预览 Word、PowerPoint、Excel 等办公文档（doc/docx/ppt/pptx/xls/xlsx）。",
   "description_i18n": {
@@ -24,7 +24,7 @@
   ],
   "qwenpaw_version": {
     "min": "2.0.0",
-    "max": "3.0.0"
+    "max": "2.9.9"
   },
   "meta": {
     "category": "productivity",
